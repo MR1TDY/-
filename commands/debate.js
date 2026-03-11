@@ -138,7 +138,7 @@ export default {
       topic.status = 'closed';
       await topic.save();
 
-      await interaction.reply({
+   await interaction.reply({
         content: `تم إنهاء النقاش ✅
 الفائز: <@${winner.id}>
 الخاسر: <@${loser.id}>
@@ -160,13 +160,23 @@ export default {
         components: [objectionRow]
       });
 
-      await interaction.channel.permissionOverwrites
-        .edit(interaction.guild.roles.everyone.id, { ViewChannel: false })
-        .catch(() => {});
+      await interaction.channel.permissionOverwrites.edit(winner.id, {
+        SendMessages: false,
+        ViewChannel: true,
+        ReadMessageHistory: true
+      }).catch(() => {});
 
-      await interaction.channel.permissionOverwrites.edit(winner.id, { SendMessages: false }).catch(() => {});
-      await interaction.channel.permissionOverwrites.edit(loser.id, { SendMessages: false }).catch(() => {});
-      await interaction.channel.permissionOverwrites.edit(interaction.user.id, { SendMessages: false }).catch(() => {});
+      await interaction.channel.permissionOverwrites.edit(loser.id, {
+        SendMessages: false,
+        ViewChannel: true,
+        ReadMessageHistory: true
+      }).catch(() => {});
+
+      await interaction.channel.permissionOverwrites.edit(interaction.user.id, {
+        SendMessages: false,
+        ViewChannel: true,
+        ReadMessageHistory: true
+      }).catch(() => {});
     } catch (e) {
       console.error('[DEBATE END] crash:', e);
 

@@ -13,3 +13,11 @@ export async function addDebatePoints(userId, points) {
     { upsert: true, new: true }
   );
 }
+
+export async function addScore(userId, field, points) {
+  return Score.findOneAndUpdate(
+    { userId },
+    { $inc: { [field]: points } },
+    { upsert: true, new: true }
+  );
+}

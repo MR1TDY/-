@@ -1,8 +1,18 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { isStaff } from '../utils/permissions.js';
 import { getOrCreateScore } from '../services/scoreService.js';
 import { scoreEmbed } from '../utils/scoreEmbed.js';
 import Score from '../models/Score.js';
+
+const fieldLabels = {
+  debates: 'النقاشات',
+  invites: 'الدعوات',
+  reporters: 'المبلغين',
+  suggestions: 'الاقتراحات',
+  judges: 'الحكام',
+  integrity: 'النزاهة',
+  donations: 'التبرعات'
+};
 
 export default {
   data: new SlashCommandBuilder()
@@ -52,26 +62,44 @@ export default {
       const member = await interaction.guild.members.fetch(target.id).catch(() => null);
       const emb = scoreEmbed(member || interaction.member, doc);
 
-      return interaction.reply({ embeds: [emb], ephemeral: self ? true : true });
+      return interaction.reply({ embeds: [emb], ephemeral: true });
     }
 
     if (sub === 'top') {
-      const field = interaction.options.getString('field');
+  const field = interaction.options.getString('field');
 
-      const rows = await Score.find().sort({ [field]: -1 }).limit(10);
-      if (!rows.length) return interaction.reply({ content: 'لا يوجد بيانات بعد.', ephemeral: true });
+  const rows = await Score.find().sort({ [field]: -1 }).limit(10);
+  if (!rows.length) {
+    return interaction.reply({ content: 'لا يوجد بيانات بعد.', ephemeral: true });
+  }
 
-      const lines = [];
-      for (let i = 0; i < rows.length; i++) {
-        const r = rows[i];
-        const user = await interaction.client.users.fetch(r.userId).catch(() => null);
-        const name = user?.username || r.userId;
-        lines.push(`${i + 1}) ${name} — ${r[field] ?? 0}`);
-      }
+  const lines = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const user = await interaction.client.users.fetch(r.userId).catch(() => null);
+    const member = await interaction.guild.members.fetch(r.userId).catch(() => null);
+
+    const name = member?.displayName || user?.username || r.userId;
+    const points = Number(r[field] ?? 0);
+
+    lines.push(
+      `**#${i + 1}**
+` +
+      `الاسم: **${name}**
+` +
+      `النقاط: **${points}**
+`
+    );
+  }
+
+  const emb = new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setTitle(`أفضل 10 - ${fieldLabels[field] || field}`)
+    .setDescription(lines.join(''))
+    .setTimestamp();
 
       return interaction.reply({
-        content: `Top 10 (${field})
-` + lines.join(''),
+        embeds: [emb],
         ephemeral: false
       });
     }

@@ -1,7 +1,15 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { isStaff } from '../utils/permissions.js';
 import { getOrCreateStats, topBy } from '../services/statsService.js';
 import { statusEmbed } from '../utils/statusEmbed.js';
+
+const metricLabels = {
+  wins: 'الانتصارات',
+  debates: 'عدد النقاشات',
+  losses: 'الخسائر',
+  judgeCount: 'عدد التحكيم',
+  maxStreak: 'أعلى سلسلة'
+};
 
 export default {
   data: new SlashCommandBuilder()
@@ -44,15 +52,16 @@ export default {
       const self = target.id === interaction.user.id;
 
       if (!self && !staff) {
-        return interaction.reply({ content: 'هذا الأمر لعرض حالتك فقط. (الستاف يقدرون يشوفون الآخرين)', ephemeral: true });
+        return interaction.reply({
+          content: 'هذا الأمر لعرض حالتك فقط. (الستاف يقدرون يشوفون الآخرين)',
+          ephemeral: true
+        });
       }
 
       const doc = await getOrCreateStats(target.id);
       const member = await interaction.guild.members.fetch(target.id).catch(() => null);
-
       const emb = statusEmbed(member || interaction.member, doc);
 
-      if (self) return interaction.reply({ embeds: [emb], ephemeral: true });
       return interaction.reply({ embeds: [emb], ephemeral: true });
     }
 
@@ -60,19 +69,36 @@ export default {
       const metric = interaction.options.getString('metric') || 'wins';
       const rows = await topBy(metric, 10);
 
-      if (!rows.length) return interaction.reply({ content: 'لا يوجد بيانات بعد.', ephemeral: true });
+      if (!rows.length) {
+        return interaction.reply({ content: 'لا يوجد بيانات بعد.', ephemeral: true });
+      }
 
       const lines = [];
       for (let i = 0; i < rows.length; i++) {
         const r = rows[i];
         const user = await interaction.client.users.fetch(r.userId).catch(() => null);
-        const name = user?.username || r.userId;
-        lines.push(`${i + 1}) ${name} — ${r[metric] ?? 0}`);
+        const member = await interaction.guild.members.fetch(r.userId).catch(() => null);
+        const name = member?.displayName || user?.username || r.userId;
+        const value = r?.[metric] ?? 0;
+
+        lines.push(
+          `**#${i + 1}**
+` +
+          `الاسم: **${name}**
+` +
+          `القيمة: **${value}**
+`
+        );
       }
 
+      const emb = new EmbedBuilder()
+        .setColor(0x2ecc71)
+        .setTitle(`أفضل 10 - ${metricLabels[metric] || metric}`)
+        .setDescription(lines.join(''))
+        .setTimestamp();
+
       return interaction.reply({
-        content: `Top 10 (${metric})
-` + lines.join(''),
+        embeds: [emb],
         ephemeral: false
       });
     }
